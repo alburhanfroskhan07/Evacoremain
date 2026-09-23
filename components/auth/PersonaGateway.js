@@ -60,8 +60,12 @@ export default function PersonaGateway() {
   const handleCitizenBypass = () => {
     try {
       localStorage.setItem("evacore_persona", "evacuee");
+      window.dispatchEvent(new CustomEvent("evacuee-registered"));
     } catch {}
-    router.push("/register-evacuee");
+    const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+    const segments = currentPath.split("/").filter(Boolean);
+    const locale = ["en", "hi", "bn"].includes(segments[0]) ? segments[0] : "en";
+    router.push(`/${locale}/register-evacuee`);
   };
 
   return (

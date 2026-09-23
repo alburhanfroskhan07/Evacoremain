@@ -261,11 +261,25 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const fallbackTimer = setTimeout(() => setLoading(false), 120);
+    // 1. Initial shelter fetch directly from API to guarantee instant load
+    fetch("/api/shelters")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.shelters && Array.isArray(data.shelters) && data.shelters.length > 0) {
+          setShelters(data.shelters);
+          setLoading(false);
+        }
+      })
+      .catch(() => {});
+
+    // 2. Real-time subscription with fallback
+    const fallbackTimer = setTimeout(() => setLoading(false), 200);
     try {
       const unsubShelters = subscribeToShelters((liveShelters) => {
         clearTimeout(fallbackTimer);
-        setShelters(liveShelters || []);
+        if (liveShelters && liveShelters.length > 0) {
+          setShelters(liveShelters);
+        }
         setLoading(false);
       });
       const unsubHazards = subscribeToHazards((liveHazards) => {
@@ -283,7 +297,6 @@ export default function DashboardPage() {
       };
     } catch (err) {
       clearTimeout(fallbackTimer);
-      setShelters([]);
       setLoading(false);
     }
   }, []);
@@ -335,15 +348,11 @@ export default function DashboardPage() {
   }, []);
 
   const handleTabChange = useCallback((tab) => {
-    if (tab === "evacuee") {
-      router.push("/register-evacuee");
-      return;
-    }
     setActiveTab(tab);
     if (tab !== "map") {
       setIsMapModalOpen(false);
     }
-  }, [router]);
+  }, []);
 
   const handleManualSync = async () => {
     setIsSyncing(true);
@@ -442,17 +451,7 @@ export default function DashboardPage() {
     return list;
   }, [shelters, campSearch, campFilter, userCoords]);
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/login");
-    }
-  }, [authLoading, user, router]);
-
-  if (authLoading || (!user && !authLoading)) {
-    return <DashboardSkeleton />;
-  }
-
+  // Public disaster grid and relief camps directory are open to all citizens without login
   if (loading) {
     return <DashboardSkeleton />;
   }

@@ -238,7 +238,7 @@ export default function BottomNav() {
       },
       {
         id: "camps",
-        href: "/",
+        href: "/?tab=camps",
         label: "Camps",
         onHomeTab: "camps",
         icon: (active) => (
@@ -259,7 +259,7 @@ export default function BottomNav() {
       },
       {
         id: "map",
-        href: "/",
+        href: "/?tab=map",
         label: "Live Map",
         onHomeTab: "map",
         icon: (active) => (
@@ -270,7 +270,10 @@ export default function BottomNav() {
       },
     ];
 
-    if (!user) {
+    const hasPasses = typeof window !== "undefined" && Boolean(localStorage.getItem("RELIEF_FAMILY_PASSES_VAULT_V1"));
+    const isCitizenOrEvacuee = role === "evacuee" || hasPasses;
+
+    if (!user && !isCitizenOrEvacuee) {
       tabs.push({
         id: "login",
         href: "/login",

@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Camera, Check, Eye, EyeOff, Key, Phone, Settings, ShieldCheck, User, X } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 const AVATAR_PRESETS = [
+  { id: "default", label: "Default Avatar", url: "/default-avatar.png" },
   { id: "emblem", label: "Official Seal", url: "/logo-emblem.png" },
   { id: "officer", label: "Official Officer", url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80" },
   { id: "volunteer", label: "Field Volunteer", url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80" },
@@ -15,9 +17,20 @@ const AVATAR_PRESETS = [
 export default function ProfileSettingsModal({ isOpen, onClose, roleInfo }) {
   const { user, role, updateUserProfile } = useAuth();
   const fileInputRef = useRef(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const getInitialAvatar = () => {
+    if (user?.photoURL && user.photoURL !== "/logo-emblem.png") return user.photoURL;
+    if (roleInfo?.avatar && roleInfo.avatar !== "/logo-emblem.png") return roleInfo.avatar;
+    return "/default-avatar.png";
+  };
 
   const [displayName, setDisplayName] = useState(user?.displayName || roleInfo?.defaultName || "");
-  const [photoURL, setPhotoURL] = useState(user?.photoURL || roleInfo?.avatar || "/logo-emblem.png");
+  const [photoURL, setPhotoURL] = useState(getInitialAvatar());
   const [phone, setPhone] = useState(user?.phone || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +38,32 @@ export default function ProfileSettingsModal({ isOpen, onClose, roleInfo }) {
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
-  if (!isOpen) return null;
+  // Re-sync values whenever modal opens or user updates
+  useEffect(() => {
+    if (isOpen) {
+      setDisplayName(user?.displayName || roleInfo?.defaultName || "");
+      setPhotoURL(getInitialAvatar());
+      setPhone(user?.phone || "");
+      setPassword("");
+      setErrorMsg("");
+      setSuccessMsg("");
+    }
+  }, [isOpen, user, roleInfo]);
+
+  // Handle escape key to close
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen || !mounted) return null;
 
   // Handle local image file upload preview
   const handleFileUpload = (e) => {
@@ -78,16 +116,16 @@ export default function ProfileSettingsModal({ isOpen, onClose, roleInfo }) {
     }
   };
 
-  return (
+  const modalContent = (
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/40 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-lg rounded-3xl border border-stone-200/90 bg-white/95 p-5 sm:p-6 shadow-2xl backdrop-blur-2xl max-h-[92vh] overflow-y-auto">
+      <div className="relative w-full max-w-lg rounded-3xl border border-stone-200/90 bg-white p-5 sm:p-6 shadow-2xl backdrop-blur-2xl max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-stone-200/70">
           <div className="flex items-center gap-3">
@@ -319,4 +357,6 @@ export default function ProfileSettingsModal({ isOpen, onClose, roleInfo }) {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

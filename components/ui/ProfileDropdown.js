@@ -15,34 +15,39 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
 import ProfileSettingsModal from "./ProfileSettingsModal";
 
+const sanitizeAvatar = (url) => {
+  if (!url || url === "/logo-emblem.png") return "/default-avatar.png";
+  return url;
+};
+
 const ROLE_PROFILES = {
   admin: {
     defaultName: "State Disaster Admin",
     designation: "System Administrator",
     badge: "ADMIN",
     consoleHref: "/admin",
-    avatar: "/logo-emblem.png",
+    avatar: "/default-avatar.png",
   },
   coordinator: {
     defaultName: "District Relief Officer",
     designation: "District Coordinator",
     badge: "COORDINATOR",
     consoleHref: "/coordinator",
-    avatar: "/logo-emblem.png",
+    avatar: "/default-avatar.png",
   },
   volunteer: {
     defaultName: "Emergency Response Worker",
     designation: "Relief Volunteer",
     badge: "VOLUNTEER",
     consoleHref: "/volunteer",
-    avatar: "/logo-emblem.png",
+    avatar: "/default-avatar.png",
   },
   shop: {
     defaultName: "Camp Ration Manager",
     designation: "Storekeeper / Shopkeeper",
     badge: "SHOPKEEPER",
     consoleHref: "/shop",
-    avatar: "/logo-emblem.png",
+    avatar: "/default-avatar.png",
   },
 };
 
@@ -51,7 +56,7 @@ const DEFAULT_ROLE_PROFILE = {
   designation: "Relief Personnel",
   badge: "PERSONNEL",
   consoleHref: "/",
-  avatar: "/logo-emblem.png",
+  avatar: "/default-avatar.png",
 };
 
 export default function ProfileDropdown({ className, ...props }) {
@@ -59,16 +64,30 @@ export default function ProfileDropdown({ className, ...props }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  // Global listener so dashboard headers can trigger profile settings modal
+  React.useEffect(() => {
+    const handleGlobalOpen = () => setIsSettingsOpen(true);
+    window.addEventListener("open-profile-settings", handleGlobalOpen);
+    return () => window.removeEventListener("open-profile-settings", handleGlobalOpen);
+  }, []);
+
   const cleanRole = role?.toLowerCase() || "";
   const roleInfo = ROLE_PROFILES[cleanRole] || DEFAULT_ROLE_PROFILE;
 
   const activeProfile = {
     name: user?.displayName || roleInfo.defaultName,
     email: user?.email || "official@relief.gov",
-    avatar: user?.photoURL || roleInfo.avatar,
+    avatar: sanitizeAvatar(user?.photoURL) || roleInfo.avatar,
     designation: roleInfo.designation,
     badge: roleInfo.badge,
     consoleHref: roleInfo.consoleHref,
+  };
+
+  const handleOpenSettings = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    setIsSettingsOpen(true);
+    setIsOpen(false);
   };
 
   const handleSignOut = async () => {
@@ -167,7 +186,8 @@ export default function ProfileDropdown({ className, ...props }) {
 
                 {/* 2. Account Settings (replaces 'AI Mesh') */}
                 <DropdownMenuItem
-                  onSelect={() => setIsSettingsOpen(true)}
+                  onClick={handleOpenSettings}
+                  onSelect={handleOpenSettings}
                   className="group flex cursor-pointer items-center justify-between rounded-xl border border-transparent p-2.5 transition-all duration-200 hover:border-stone-200/80 hover:bg-stone-50"
                 >
                   <div className="flex items-center gap-2.5">

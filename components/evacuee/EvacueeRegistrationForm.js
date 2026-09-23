@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import Link from "next/link";
 import Spinner from "@/components/ui/Spinner";
 import { useTranslations, useLanguage } from "@/lib/i18n/LanguageContext";
 import { useVoice } from "@/lib/VoiceContext";
@@ -827,6 +828,12 @@ export default function EvacueeRegistrationForm({ onSubmit, onAIExtract, toast, 
         distanceKm: offlineRes.distanceKm,
         isOffline: true,
       });
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("evacore_persona", "evacuee");
+        } catch {}
+        window.dispatchEvent(new CustomEvent("evacuee-registered"));
+      }
       toast?.({
         type: "success",
         message: `Offline pass generated: Routed to nearest camp (${offlineRes.assignedShelterName})!`,
@@ -867,6 +874,12 @@ export default function EvacueeRegistrationForm({ onSubmit, onAIExtract, toast, 
         distanceKm: data?.distanceKm,
         reunificationMatches: data?.reunificationMatches || [],
       });
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("evacore_persona", "evacuee");
+        } catch {}
+        window.dispatchEvent(new CustomEvent("evacuee-registered"));
+      }
       onRegistered?.();
 
       if (data?.voucherCode) {
@@ -1208,7 +1221,29 @@ export default function EvacueeRegistrationForm({ onSubmit, onAIExtract, toast, 
           expiresAt={submissionResult.expiresAt}
         />
 
-        <div className="pt-2">
+        <div className="pt-2 space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <Link
+              href="/?tab=camps"
+              className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 no-underline active:scale-95 transition-all select-none"
+            >
+              <svg className="w-4 h-4 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 20h18M3 20l9-16 9 16M12 4v16M8.5 20l3.5-7 3.5 7" />
+              </svg>
+              <span>View Relief Camps</span>
+            </Link>
+
+            <Link
+              href="/"
+              className="py-2.5 px-3 rounded-xl bg-white border border-stone-200 hover:bg-stone-50 text-stone-800 font-bold text-xs shadow-2xs flex items-center justify-center gap-1.5 no-underline active:scale-95 transition-all select-none"
+            >
+              <svg className="w-4 h-4 text-stone-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+              </svg>
+              <span>Disaster Grid</span>
+            </Link>
+          </div>
+
           <button
             type="button"
             onClick={handleReset}
