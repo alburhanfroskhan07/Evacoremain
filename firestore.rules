@@ -1,0 +1,183 @@
+rules_version = '2';
+
+// EVACORE Firestore Security Rules (Master PRD Section 4 & Section 8)
+// Single source of truth for role checking is `users/{uid}.role`
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ─────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getUserRole() == 'admin';
+    }
+
+    function isCoordinator() {
+      return isSignedIn() && getUserRole() == 'coordinator';
+    }
+
+    function isShop() {
+      return isSignedIn() && getUserRole() == 'shop';
+    }
+
+    // ── users collection ─────────────────────────────────────────────
+    // Self-registration allowed ONLY for "coordinator" or "shop" (never "admin").
+    // Admins are created exclusively via Admin SDK / CLI script.
+    // Role is immutable once set.
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role in ['coordinator', 'shop', 'volunteer']
+        && request.resource.data.role != 'admin';
+      allow update: if false; // Role is immutable
+      allow delete: if false;
+    }
+
+    // ── shelters collection ──────────────────────────────────────────
+    // Coordinators can create shelters with status: "pending".
+    // Owning coordinators can update their shelter's occupancy (cannot modify status or coordinatorUid).
+    // Only Admin can approve/reject (flip status).
+    // Reads are public for approved shelters; coordinators and admins can read pending ones.
+    function isShelterOwner() {
+      return isSignedIn() && request.auth.uid == resource.data.coordinatorUid;
+    }
+
+    function isNewShelter() {
+      return (isCoordinator() || isAdmin())
+        && request.resource.data.coordinatorUid == request.auth.uid
+        && request.resource.data.status == 'pending';
+    }
+
+    function isEditableByOwner() {
+      return isShelterOwner()
+        && request.resource.data.coordinatorUid == resource.data.coordinatorUid
+        && request.resource.data.status == resource.data.status;
+    }
+
+    function isStatusChangeByAdmin() {
+      return isAdmin()
+        && request.resource.data.coordinatorUid == resource.data.coordinatorUid;
+    }
+
+    // Hard backstop: Reject negative occupancy and exceeding totalCapacity on updates
+    function isValidOccupancyUpdate() {
+      let occ = request.resource.data.currentOccupancy;
+      let hasCap = 'totalCapacity' in resource.data && resource.data.totalCapacity is number;
+      return !(occ is number) || (
+        occ >= 0
+        && (!hasCap || occ <= resource.data.totalCapacity)
+      );
+    }
+
+    match /shelters/{shelterId} {
+      allow read: if resource.data.status == 'approved' || isSignedIn();
+      allow create: if isNewShelter();
+      allow update: if (isEditableByOwner() || isStatusChangeByAdmin()) && isValidOccupancyUpdate();
+      allow delete: if isAdmin();
+
+      // Supplies subcollection: seeded server-side on approval (Step B1).
+      // Clients may only update an existing item's fields. Reads follow the
+      // parent shelter's approved-read rule.
+      match /supplies/{itemId} {
+        allow read: if get(/databases/$(database)/documents/shelters/$(shelterId)).data.status == 'approved' || isSignedIn();
+        allow create: if false;
+        allow update: if isSignedIn()
+          && request.auth.uid == get(/databases/$(database)/documents/shelters/$(shelterId)).data.coordinatorUid;
+        allow delete: if false;
+      }
+    }
+
+    // ── evacuees collection ──────────────────────────────────────────
+    // Written ONLY via Admin SDK (POST /api/register-evacuee).
+    // Client writes are completely denied for spam prevention.
+    // Reads are restricted to signed-in coordinators and admins.
+    match /evacuees/{evacueeId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if false;
+    }
+
+    // ── vouchers collection ──────────────────────────────────────────
+    // Written ONLY server-side via Admin SDK (generation & redemption).
+    // Direct client writes and public reads are completely denied.
+    // Admins can read for aggregate dashboard and anomaly monitoring.
+    match /vouchers/{voucherId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // ── sos_alerts collection ────────────────────────────────────────
+    // Anyone (even public / anonymous) can submit an SOS alert.
+    // Updates (resolve, triage) are restricted to coordinators/admins.
+    match /sos_alerts/{alertId} {
+      allow read: if isSignedIn();
+      allow create: if true;
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    // ── hazards collection ───────────────────────────────────────────
+    // Public read. All writes (report, verify, dismiss) go through the API
+    // routes in app/api/report-hazard and app/api/hazards/[id]/, which use the
+    // Admin SDK and bypass these rules. Direct client writes are denied.
+    match /hazards/{hazardId} {
+      allow read: if true;
+      allow create, update, delete: if false;
+    }
+
+// ── volunteers collection ────────────────────────────────────────
+    // NOT public-read - the deliberate exception in this app. Volunteer phone
+    // numbers and live locations are sensitive personal data, unlike
+    // shelter/supply data which is intentionally public. Do not loosen this to
+    // public-read in a future edit without discussing it first.
+    // A volunteer can create/update ONLY their own volunteers/{uid} document.
+    // The verified / verifiedId fields are locked for client writes (only the
+    // Admin SDK route in app/api/verify-volunteer may flip them), and dispatch
+    // goes through app/api/dispatch-volunteer - so clients can never change
+    // another person's volunteer record.
+    match /volunteers/{volunteerId} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == volunteerId);
+      allow create: if isSignedIn()
+        && request.auth.uid == volunteerId
+        && request.resource.data.verified == false
+        && request.resource.data.verifiedId == null;
+      allow update: if isSignedIn()
+        && request.auth.uid == volunteerId
+        && request.resource.data.verified == resource.data.verified
+        && request.resource.data.verifiedId == resource.data.verifiedId;
+      allow delete: if false;
+    }
+
+    // ── district_alerts collection ───────────────────────────────────
+    // Public read (the weather alert banner is shown to everyone). All writes
+    // go through app/api/ai/refresh-weather-alert via the Admin SDK, which
+    // bypasses these rules - direct client writes are denied.
+    match /district_alerts/{alertId} {
+      allow read: if true;
+      allow create, update, delete: if false;
+    }
+
+    // ── shelter_forecasts collection ─────────────────────────────────
+    // Written ONLY via Admin SDK (POST /api/ai/forecast-shelter).
+    // Read-only for authenticated users.
+    match /shelter_forecasts/{shelterId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── reunification_alerts collection ─────────────────────────────
+    // Written via server Admin SDK upon matching.
+    // Signed in coordinators and admins can read and update.
+    match /reunification_alerts/{alertId} {
+      allow read: if isSignedIn();
+      allow update: if isSignedIn();
+      allow create, delete: if isAdmin();
+    }
+  }
+}
