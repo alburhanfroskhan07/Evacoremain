@@ -53,7 +53,7 @@ export default function BottomNav() {
   const currentPath = getCleanPath(pathname);
   const isHomePage = currentPath === "/" || currentPath === "";
 
-  if (currentPath === "/login" || currentPath === "/signup") {
+  if (currentPath === "/login" || currentPath === "/signup" || (!user && !role)) {
     return null;
   }
 

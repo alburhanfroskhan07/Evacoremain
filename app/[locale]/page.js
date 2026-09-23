@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
 import { DashboardSkeleton } from "@/components/ui/Skeleton";
+import PersonaGateway from "@/components/auth/PersonaGateway";
 import { subscribeToShelters } from "@/lib/shelters";
 import { subscribeToHazards, reportHazard } from "@/lib/hazards";
 import ReportHazardSheet from "@/components/hazard/ReportHazardSheet";
@@ -190,7 +191,7 @@ function CampCard({ shelter, userCoords, onNavigate }) {
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
   const { toast, ToastContainer } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [shelters, setShelters] = useState([]);
@@ -451,7 +452,16 @@ export default function DashboardPage() {
     return list;
   }, [shelters, campSearch, campFilter, userCoords]);
 
-  // Public disaster grid and relief camps directory are open to all citizens without login
+  // If verifying auth/session state on initial mount, display Skeleton
+  if (authLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  // If user is not authenticated and has no active persona, display Login / Gateway page at first as landing page
+  if (!user && !role) {
+    return <PersonaGateway />;
+  }
+
   if (loading) {
     return <DashboardSkeleton />;
   }
