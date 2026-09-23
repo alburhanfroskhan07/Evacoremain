@@ -30,7 +30,7 @@ export default function Navbar() {
     return path || "/";
   };
   const cleanPath = getCleanPath(pathname);
-  const isLoginPage = cleanPath === "/login";
+  const isLoginPage = cleanPath === "/login" || (!user && !role);
 
   // Check if current user is an evacuee with passes saved in local vault
   useEffect(() => {
@@ -60,6 +60,7 @@ export default function Navbar() {
         try {
           localStorage.removeItem("RELIEF_FAMILY_PASSES_VAULT_V1");
           localStorage.removeItem("evacore_auth_user");
+          localStorage.removeItem("evacore_persona");
         } catch {}
         setHasEvacueePasses(false);
         try {

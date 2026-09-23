@@ -60,8 +60,23 @@ export default function PersonaGateway() {
   const handleCitizenBypass = () => {
     try {
       localStorage.setItem("evacore_persona", "evacuee");
+      window.dispatchEvent(new CustomEvent("evacuee-registered"));
     } catch {}
-    router.push("/register-evacuee");
+    const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+    const segments = currentPath.split("/").filter(Boolean);
+    const locale = ["en", "hi", "bn"].includes(segments[0]) ? segments[0] : "en";
+    router.push(`/${locale}`);
+  };
+
+  const handleRegisterDirect = () => {
+    try {
+      localStorage.setItem("evacore_persona", "evacuee");
+      window.dispatchEvent(new CustomEvent("evacuee-registered"));
+    } catch {}
+    const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+    const segments = currentPath.split("/").filter(Boolean);
+    const locale = ["en", "hi", "bn"].includes(segments[0]) ? segments[0] : "en";
+    router.push(`/${locale}/register-evacuee`);
   };
 
   return (
@@ -81,7 +96,7 @@ export default function PersonaGateway() {
         <h1 className="text-2xl sm:text-3xl font-black font-display tracking-tight">
           <span className="text-stone-900">{t("welcome", "Welcome to")} </span>
           <span className="text-[#FF5A36]">Eva</span>
-          <span className="text-[#1B638A]">core</span>
+          <span className="text-[#1B638A]">corE</span>
         </h1>
         <p className="text-xs sm:text-sm font-mono text-stone-500 max-w-md mx-auto">
           {t("subtitle", "West Bengal Real-Time Emergency Shelter & Relief Distribution Grid")}
@@ -130,19 +145,34 @@ export default function PersonaGateway() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleCitizenBypass}
-            className="
-              w-full py-3.5 px-4 rounded-2xl
-              bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500
-              text-white font-bold font-display text-sm tracking-wide
-              shadow-lg shadow-emerald-600/30 active:scale-98 transition-all
-              flex items-center justify-center gap-2 cursor-pointer
-            "
-          >
-            <span>{t("publicButton", "Enter Citizen Relief Portal →")}</span>
-          </button>
+          <div className="space-y-2 pt-2">
+            <button
+              type="button"
+              onClick={handleCitizenBypass}
+              className="
+                w-full py-3.5 px-4 rounded-2xl
+                bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500
+                text-white font-bold font-display text-sm tracking-wide
+                shadow-lg shadow-emerald-600/30 active:scale-98 transition-all
+                flex items-center justify-center gap-2 cursor-pointer
+              "
+            >
+              <span>{t("publicButton", "Enter Citizen Relief Portal →")}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleRegisterDirect}
+              className="
+                w-full py-2 px-3 rounded-xl
+                bg-emerald-50 hover:bg-emerald-100 text-emerald-800
+                font-semibold text-xs transition-colors cursor-pointer
+                border border-emerald-200/80 flex items-center justify-center gap-1.5
+              "
+            >
+              <span>Direct Family Pass Registration →</span>
+            </button>
+          </div>
         </div>
 
         {/* Track 2: Department Credentials Login */}

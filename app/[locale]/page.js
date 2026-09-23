@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
 import { DashboardSkeleton } from "@/components/ui/Skeleton";
+import PersonaGateway from "@/components/auth/PersonaGateway";
 import { subscribeToShelters } from "@/lib/shelters";
 import { subscribeToHazards, reportHazard } from "@/lib/hazards";
 import ReportHazardSheet from "@/components/hazard/ReportHazardSheet";
@@ -190,7 +191,7 @@ function CampCard({ shelter, userCoords, onNavigate }) {
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
   const { toast, ToastContainer } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [shelters, setShelters] = useState([]);
@@ -261,11 +262,25 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const fallbackTimer = setTimeout(() => setLoading(false), 120);
+    // 1. Initial shelter fetch directly from API to guarantee instant load
+    fetch("/api/shelters")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.shelters && Array.isArray(data.shelters) && data.shelters.length > 0) {
+          setShelters(data.shelters);
+          setLoading(false);
+        }
+      })
+      .catch(() => {});
+
+    // 2. Real-time subscription with fallback
+    const fallbackTimer = setTimeout(() => setLoading(false), 200);
     try {
       const unsubShelters = subscribeToShelters((liveShelters) => {
         clearTimeout(fallbackTimer);
-        setShelters(liveShelters || []);
+        if (liveShelters && liveShelters.length > 0) {
+          setShelters(liveShelters);
+        }
         setLoading(false);
       });
       const unsubHazards = subscribeToHazards((liveHazards) => {
@@ -283,7 +298,6 @@ export default function DashboardPage() {
       };
     } catch (err) {
       clearTimeout(fallbackTimer);
-      setShelters([]);
       setLoading(false);
     }
   }, []);
@@ -335,15 +349,11 @@ export default function DashboardPage() {
   }, []);
 
   const handleTabChange = useCallback((tab) => {
-    if (tab === "evacuee") {
-      router.push("/register-evacuee");
-      return;
-    }
     setActiveTab(tab);
     if (tab !== "map") {
       setIsMapModalOpen(false);
     }
-  }, [router]);
+  }, []);
 
   const handleManualSync = async () => {
     setIsSyncing(true);
@@ -442,15 +452,14 @@ export default function DashboardPage() {
     return list;
   }, [shelters, campSearch, campFilter, userCoords]);
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/login");
-    }
-  }, [authLoading, user, router]);
-
-  if (authLoading || (!user && !authLoading)) {
+  // If verifying auth/session state on initial mount, display Skeleton
+  if (authLoading) {
     return <DashboardSkeleton />;
+  }
+
+  // If user is not authenticated and has no active persona, display Login / Gateway page at first as landing page
+  if (!user && !role) {
+    return <PersonaGateway />;
   }
 
   if (loading) {

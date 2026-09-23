@@ -122,10 +122,12 @@ export function DropdownMenuContent({
   );
 }
 
-export function DropdownMenuItem({ asChild = false, children, className = "", ...props }) {
+export function DropdownMenuItem({ asChild = false, children, className = "", onClick, onSelect, ...props }) {
   const { setIsOpen } = React.useContext(DropdownMenuContext);
 
   const handleClick = (e) => {
+    onClick?.(e);
+    onSelect?.(e);
     setIsOpen(false);
   };
 

@@ -100,7 +100,7 @@ export default function AppSplashLoader() {
         <h1 className="text-2xl sm:text-3xl font-black font-display tracking-wider text-white flex items-center gap-2">
           <span>
             <span className="text-[#FF5A36]">Eva</span>
-            <span className="text-white">core</span>
+            <span className="text-white">corE</span>
           </span>
           <span className="text-[10px] uppercase font-mono tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
             v2.0
