@@ -7,6 +7,7 @@ import Navbar from "@/components/ui/Navbar";
 import BottomNav from "@/components/ui/BottomNav";
 import OfflineIndicator from "@/components/ui/OfflineIndicator";
 import InstallPrompt from "@/components/ui/InstallPrompt";
+import CitizenSOSButton from "@/components/ui/CitizenSOSButton";
 
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import WeatherAlertBanner from "@/components/ui/WeatherAlertBanner";
@@ -150,6 +151,9 @@ export default async function RootLayout({ children, params: { locale } }) {
                       <main className="flex-1 px-3 sm:px-6 py-4 pb-28 overflow-x-hidden w-full animate-smooth-enter">
                         {children}
                       </main>
+
+                      {/* Citizen SOS Floating Action Button (Citizen / Evacuee Portal Only) */}
+                      <CitizenSOSButton />
 
                       {/* Fixed Navigation */}
                       <BottomNav />
