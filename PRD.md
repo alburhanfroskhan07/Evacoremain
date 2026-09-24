@@ -2,8 +2,10 @@
 ## Disaster Operations, Real-Time Shelter Capacity Allocation & Resilient Relief Ecosystem
 **Document Version:** 2.0.0 (Production / SIH Edition)  
 **Status:** Live & Implemented  
-**Classification:** Product & Engineering Specification  
-**Repository:** [https://github.com/alburhanfroskhan07/Evacoremain](https://github.com/alburhanfroskhan07/Evacoremain)
+**Repository:** [https://github.com/alburhanfroskhan07/Evacoremain](https://github.com/alburhanfroskhan07/Evacoremain)  
+**Live Production URL:** [https://evacore-nu.vercel.app](https://evacore-nu.vercel.app)  
+**Production Alias:** [https://evacore-vedant29-codes-projects.vercel.app](https://evacore-vedant29-codes-projects.vercel.app)  
+**Hosting Environment:** Vercel Global Edge (Washington, D.C. `iad1`)  
 
 ---
 
@@ -397,3 +399,34 @@ Follow this step-by-step procedure to showcase all platform capabilities during 
 8. **Offline PWA Validation:**
    - Open Chrome DevTools $\rightarrow$ Network $\rightarrow$ toggle **Offline**.
    - Refresh the page to show complete PWA offline availability, IndexedDB pass vault access, and offline delta queueing.
+
+---
+
+## 10. Live Hosting, Cloud Infrastructure & Vercel Deployment
+
+### 10.1 Production Deployment Profile
+EvacorE is hosted as an optimized Next.js 14 production application on **Vercel** with global edge caching and serverless API execution:
+- **Canonical Production URL:** [https://evacore-nu.vercel.app](https://evacore-nu.vercel.app)
+- **Deployment Project:** `vedant29-codes-projects/evacore`
+- **Region:** Washington, D.C., USA (`iad1`)
+- **Package Manager & Lockfile:** `pnpm@9.15.5` with `--no-frozen-lockfile` install strategy via [vercel.json](file:///c:/Users/vedan/Downloads/Evacoremain-main%20%281%29/Evacoremain-main/vercel.json)
+
+### 10.2 Continuous Deployment & Redeployment Runbook
+To deploy code changes or redeploy the latest commit to the live production URL without modifying existing alias endpoints:
+
+1. **Verify Local Production Build:**
+   ```bash
+   pnpm run build
+   # or
+   npm run build
+   ```
+2. **Execute Vercel Production Deployment:**
+   ```bash
+   npx vercel --prod --yes
+   ```
+3. **Automated Alias Routing:**
+   Vercel automatically promotes the built deployment and routes traffic atomically to:
+   - Primary: `https://evacore-nu.vercel.app`
+   - Team Fallback: `https://evacore-vedant29-codes-projects.vercel.app`
+   Zero downtime is incurred during deployments due to Vercel's atomic edge alias switching.
+
